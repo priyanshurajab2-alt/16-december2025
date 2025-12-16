@@ -5,22 +5,15 @@ from dynamic_db_handler import dynamic_db_handler
 test_bp = Blueprint('test_bp', __name__, url_prefix='/test', template_folder='templates')
 # then the URL becomes /test/tests
 
-DATABASE = os.environ.get('TEST_DB_FILE', '/var/data/test_database.db')
-
-
-
+# At top of test.py
+DATABASE = os.environ.get('TEST_DB_FILE', '/var/data/test_test.db')
 
 def get_test_db_connection():
-    """Pick the first discovered test DB; fallback to default path."""
-    test_dbs = dynamic_db_handler.discovered_databases.get('test', [])
-    if test_dbs:
-        db_file = test_dbs[0]['file']   # e.g. /var/data/demo_test.db
-    else:
-        db_file = os.environ.get('TEST_DB_FILE', '/var/data/test_database.db')
-
-    conn = sqlite3.connect(db_file)
+    """Return connection to the tests database."""
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 
 @test_bp.route('/tests')

@@ -2,7 +2,9 @@ from flask import Blueprint, render_template, abort, request, redirect, url_for,
 import sqlite3
 import os
 from dynamic_db_handler import dynamic_db_handler
-test_bp = Blueprint('test_bp', __name__, template_folder='templates')
+test_bp = Blueprint('test_bp', __name__, url_prefix='/test', template_folder='templates')
+# then the URL becomes /test/tests
+
 DATABASE = os.environ.get('TEST_DB_FILE', '/var/data/test_database.db')
 
 

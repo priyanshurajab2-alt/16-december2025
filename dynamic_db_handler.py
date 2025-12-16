@@ -38,7 +38,7 @@ class DynamicDatabaseHandler:
             },
             # ------ Add this block ------
             'test': {
-                'pattern': '*test*.db',
+                'pattern': 'test*.db',
                 'description': 'Test Databases',
                 'required_tables': ['test_info', 'test_questions'],
                 'schema': self.get_test_schema()

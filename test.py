@@ -4,7 +4,11 @@ import os
 
 
 test_bp = Blueprint('test_bp', __name__, template_folder='templates')
-DATABASE = os.environ.get('TEST_DB_FILE', 'test.db')
+
+# ✅ TEST DB → LOCAL/TEMP only (NEVER persistent)
+TEST_DIR = os.environ.get("TEST_DIR", os.path.join(os.getcwd(), "local_tests"))
+os.makedirs(TEST_DIR, exist_ok=True)
+DATABASE = os.path.join(TEST_DIR, "test.db")
 
 
 def get_connection():

@@ -355,7 +355,6 @@ def get_next_topic(conn, subject_name, current_topic):
     except ValueError:
         pass
     return None
--------
 # CENTRALIZED DATABASE OPERATIONS
 # --------------------
 def add_bookmark_to_db(user_id, question_id, subject, topic):

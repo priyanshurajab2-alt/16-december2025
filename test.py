@@ -1,23 +1,29 @@
 from flask import Blueprint, render_template, abort, request, redirect, url_for, flash, session, jsonify
 import sqlite3
 import os
-
-
+from dynamic_db_handler import dynamic_db_handler
 test_bp = Blueprint('test_bp', __name__, template_folder='templates')
 DATABASE = os.environ.get('TEST_DB_FILE', '/var/data/test_database.db')
 
 
 
 
-def get_connection():
-    conn = sqlite3.connect(DATABASE)
+def get_test_db_connection():
+    """Pick the first discovered test DB; fallback to default path."""
+    test_dbs = dynamic_db_handler.discovered_databases.get('test', [])
+    if test_dbs:
+        db_file = test_dbs[0]['file']   # e.g. /var/data/demo_test.db
+    else:
+        db_file = os.environ.get('TEST_DB_FILE', '/var/data/test_database.db')
+
+    conn = sqlite3.connect(db_file)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 @test_bp.route('/tests')
 def list_tests():
-    conn = get_connection()
+    conn = get_test_db_connection()
     try:
         cur = conn.execute('''
             SELECT id, test_name, description, duration_minutes, start_time, end_time
@@ -32,7 +38,7 @@ def list_tests():
 
 @test_bp.route('/tests/<int:test_id>/questions')
 def view_test_questions(test_id):
-    conn = get_connection()
+    conn = get_test_db_connection()
     try:
         test = conn.execute('SELECT * FROM test_info WHERE id = ?', (test_id,)).fetchone()
         if not test:
@@ -73,7 +79,7 @@ def start_test(test_id):
 
 @test_bp.route('/tests/<int:test_id>/question/<int:q_num>', methods=['GET', 'POST'])
 def single_question(test_id, q_num):
-    conn = get_connection()
+    conn = get_test_db_connection()
     try:
         questions = conn.execute(
             '''SELECT id, subject, topic, question, option_a, option_b, option_c, option_d, correct_answer
@@ -173,7 +179,7 @@ def single_question(test_id, q_num):
 # AJAX toggle mark
 @test_bp.route('/tests/<int:test_id>/question/<int:q_num>/toggle_mark', methods=['POST'])
 def toggle_mark_ajax(test_id, q_num):
-    conn = get_connection()
+    conn = get_test_db_connection()
     try:
         questions = conn.execute('SELECT id FROM test_questions WHERE test_id = ? ORDER BY id', (test_id,)).fetchall()
     finally:
@@ -203,7 +209,7 @@ def toggle_mark_ajax(test_id, q_num):
 
 @test_bp.route('/tests/<int:test_id>/review')
 def review_test(test_id):
-    conn = get_connection()
+    conn = get_test_db_connection()
     try:
         questions = conn.execute('''SELECT id FROM test_questions WHERE test_id = ? ORDER BY id''', (test_id,)).fetchall()
         test = conn.execute('SELECT * FROM test_info WHERE id = ?', (test_id,)).fetchone()
@@ -231,7 +237,7 @@ def review_test(test_id):
 def review_attempted(test_id):
     print(f"DEBUG REVIEW_ATTEMPTED: test_id={test_id}")
     
-    conn = get_connection()
+   conn = get_test_db_connection()
     try:
         test = conn.execute('SELECT * FROM test_info WHERE id = ?', (test_id,)).fetchone()
         print(f"DEBUG: Test '{test['test_name'] if test else 'NOT FOUND'}'")
@@ -274,7 +280,7 @@ def review_attempted(test_id):
 def review_question(test_id, filter_type, q_index):
     print(f"DEBUG: review_question - test_id={test_id}, filter={filter_type}, q_index={q_index}")
     
-    conn = get_connection()
+    conn = get_test_db_connection()
     try:
         # 1. Verify test exists
         test = conn.execute('SELECT * FROM test_info WHERE id = ?', (test_id,)).fetchone()
@@ -337,7 +343,7 @@ def submit_test(test_id):
         print("DEBUG: Redirecting to review")
         return redirect(url_for('test_bp.review_attempted', test_id=test_id))
     
-    conn = get_connection()
+    conn = get_test_db_connection()
     try:
         # DEBUG: Check test exists
         test = conn.execute('SELECT * FROM test_info WHERE id = ?', (test_id,)).fetchone()

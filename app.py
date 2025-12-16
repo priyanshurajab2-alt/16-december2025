@@ -336,13 +336,13 @@ def get_user_note(conn_unused, user_id, question_id):
         user_conn.close()
 
 def get_next_topic(conn, subject_name, current_topic):
-    """Get the next topic in the same subject"""
+    """Get next topic sorted by CHAPTER first, then topic name"""
     topics = conn.execute(
         '''
         SELECT DISTINCT topic 
         FROM qbank 
-        WHERE LOWER(subject) = ? AND topic != "" 
-        ORDER BY topic
+        WHERE LOWER(subject) = ? AND topic != "" AND topic != "None"
+        ORDER BY chapter ASC, topic ASC
         ''',
         (subject_name.lower(),)
     ).fetchall()
@@ -355,8 +355,7 @@ def get_next_topic(conn, subject_name, current_topic):
     except ValueError:
         pass
     return None
-
-# --------------------
+-------
 # CENTRALIZED DATABASE OPERATIONS
 # --------------------
 def add_bookmark_to_db(user_id, question_id, subject, topic):

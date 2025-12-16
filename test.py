@@ -237,7 +237,7 @@ def review_test(test_id):
 def review_attempted(test_id):
     print(f"DEBUG REVIEW_ATTEMPTED: test_id={test_id}")
     
-   conn = get_test_db_connection()
+    conn = get_test_db_connection()
     try:
         test = conn.execute('SELECT * FROM test_info WHERE id = ?', (test_id,)).fetchone()
         print(f"DEBUG: Test '{test['test_name'] if test else 'NOT FOUND'}'")

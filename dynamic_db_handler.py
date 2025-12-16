@@ -387,9 +387,12 @@ class DynamicDatabaseHandler:
         elif category == 'admin':
             db_file = os.path.join('/var/data', "admin_users.db")
         elif category == 'users':
-            db_file = "admin_users.db"  # Fixed name for centralized users
+            db_file = "admin_users.db"
+        elif category == 'test':
+            db_file = os.path.join('/var/data', f"{db_name}_test.db")
+            # Fixed name for centralized users
         else:
-            db_file = f"{db_name}.db"
+            db_file = os.path.join('/var/data', f"{db_name}.db")
         
         # Check if database already exists
         if os.path.exists(db_file):

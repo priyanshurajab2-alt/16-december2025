@@ -19,27 +19,53 @@ def get_test_db_connection():
 
 @test_bp.route('/tests')
 def list_tests():
-    user_id = session.get('user_id', 1)  # adjust default as you wish
+    user_id = session.get('user_id', 1)
     conn = get_test_db_connection()
     try:
         cur = conn.execute('''
             SELECT ti.id, ti.test_name, ti.description, ti.duration_minutes,
                    ti.start_time, ti.end_time,
-                   EXISTS (
-                       SELECT 1 FROM user_responses ur
-                       WHERE ur.test_id = ti.id
-                         AND ur.user_id = ?
-                         AND ur.question_id IS NULL
-                         AND ur.is_correct = 1
-                   ) AS completed
+                   MAX(ur.test_started) as test_started,
+                   MAX(ur.test_submitted) as test_submitted
             FROM test_info ti
+            LEFT JOIN user_responses ur ON ti.id = ur.test_id 
+                AND ur.user_id = ?
+            GROUP BY ti.id
             ORDER BY ti.created_at DESC
         ''', (user_id,))
         tests = cur.fetchall()
     finally:
         conn.close()
-
     return render_template('test/tests.html', tests=tests)
+@test_bp.route('/tests/<int:test_id>/resume')
+def resume_test(test_id):
+    user_id = session.get('user_id', 1)
+    conn = get_test_db_connection()
+    try:
+        # Check if test was started
+        started = conn.execute('''
+            SELECT test_started FROM user_responses 
+            WHERE test_id = ? AND user_id = ? LIMIT 1
+        ''', (test_id, user_id)).fetchone()
+        
+        if not started or started['test_started'] == 0:
+            flash("No saved progress found")
+            return redirect(url_for('test_bp.start_test', test_id=test_id))
+        
+        # Load saved session data from DB
+        answers = conn.execute('SELECT question_id, user_answer FROM user_responses WHERE test_id = ? AND user_id = ? AND question_id IS NOT NULL', (test_id, user_id)).fetchall()
+        marked = conn.execute('SELECT question_id FROM user_responses WHERE test_id = ? AND user_id = ? AND marked = 1', (test_id, user_id)).fetchall()
+        skipped = conn.execute('SELECT question_id FROM user_responses WHERE test_id = ? AND user_id = ? AND skipped = 1', (test_id, user_id)).fetchall()
+        
+        # Restore to session
+        session[f'test_{test_id}_answers'] = {str(row['question_id']): row['user_answer'] for row in answers}
+        session[f'test_{test_id}_marked'] = [str(row['question_id']) for row in marked]
+        session[f'test_{test_id}_skipped'] = [str(row['question_id']) for row in skipped]
+        
+    finally:
+        conn.close()
+    
+    return redirect(url_for('test_bp.single_question', test_id=test_id, q_num=1))
 
 
 @test_bp.route('/tests/<int:test_id>/questions')
@@ -77,6 +103,18 @@ def view_test_questions(test_id):
 
 @test_bp.route('/tests/<int:test_id>/start')
 def start_test(test_id):
+    user_id = session.get('user_id', 1)
+    conn = get_test_db_connection()
+    try:
+        # Mark test as started
+        conn.execute('''
+            UPDATE user_responses SET test_started = 1 
+            WHERE test_id = ? AND user_id = ?
+        ''', (test_id, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+    
     session[f'test_{test_id}_answers'] = {}
     session[f'test_{test_id}_marked'] = []
     session[f'test_{test_id}_skipped'] = []
@@ -380,11 +418,6 @@ def submit_test(test_id):
                 VALUES (?, ?, ?, ?, ?)
             ''', (test_id, user_id, q['id'], user_answer, is_correct))
         
-        conn.execute('''
-            INSERT INTO user_responses (test_id, user_id, question_id, user_answer, is_correct)
-            VALUES (?, ?, NULL, NULL, 1)
-        ''', (test_id, user_id))
-
         conn.commit()
         print("DEBUG: Responses saved")
         

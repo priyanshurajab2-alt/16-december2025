@@ -109,9 +109,9 @@
                         </div>
 
                         <div style="text-align: right;">
-                            <a href="{{ url_for('manage_specific_database', db_file=db_info.name + '.db')) }}" class="btn btn-primary">✏️ Manage</a>
-                            <a href="{{ url_for('debug_table_access', db_file=db_info.name + '.db'), table_name='qbank') }}" class="btn btn-info">🔍 Debug</a>
-                            <form method="POST" action="{{ url_for('delete_database', db_file=db_info.name + '.db')) }}" style="display: inline-block; margin-left: 5px;" onsubmit="return confirm('Are you sure you want to delete {{ db_info.file }}? A backup will be created.')">
+                            <a href="{{ url_for('manage_specific_database', db_file=db_info.file) }}" class="btn btn-primary">✏️ Manage</a>
+                            <a href="{{ url_for('debug_table_access', db_file=db_info.file, table_name='qbank') }}" class="btn btn-info">🔍 Debug</a>
+                            <form method="POST" action="{{ url_for('delete_database', db_file=db_info.file) }}" style="display: inline-block; margin-left: 5px;" onsubmit="return confirm('Are you sure you want to delete {{ db_info.file }}? A backup will be created.')">
                                 <button type="submit" class="btn btn-danger">🗑️ Delete</button>
                             </form>
                         </div>

@@ -26,10 +26,11 @@ def list_tests():
             SELECT ti.id, ti.test_name, ti.description, ti.duration_minutes,
                    ti.start_time, ti.end_time,
                    EXISTS (
-                       SELECT 1 FROM user_responses ur
+                       SELECT 1
+                       FROM user_responses ur
                        WHERE ur.test_id = ti.id
                          AND ur.user_id = ?
-                         AND ur.question_id IS NULL
+                         AND ur.question_id = 0
                          AND ur.test_submitted = 1
                    ) AS test_submitted
             FROM test_info ti
@@ -381,7 +382,7 @@ def submit_test(test_id):
                     # Insert a durable completion marker (one row per user+test)
             conn.execute('''
             INSERT INTO user_responses (test_id, user_id, question_id, user_answer, is_correct, test_started, test_submitted)
-            VALUES (?, ?, NULL, NULL, 0, 1, 1)
+            VALUES (?, ?, 0, NULL, 0, 1, 1)
         ''', (test_id, user_id))
         # Mark test as submitted
         conn.execute('''

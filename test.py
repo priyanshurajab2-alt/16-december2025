@@ -72,24 +72,10 @@ def view_test_questions(test_id):
 
 @test_bp.route('/tests/<int:test_id>/start')
 def start_test(test_id):
-    user_id = session.get('user_id', 1)
-    conn = get_test_db_connection()
-    try:
-        conn.execute('''
-            INSERT INTO user_responses (test_id, user_id, question_id, test_started)
-            VALUES (?, ?, NULL, 1)
-            ON CONFLICT(test_id, user_id, question_id)
-            DO UPDATE SET test_started = 1
-        ''', (test_id, user_id))
-        conn.commit()
-    finally:
-        conn.close()
-
     session[f'test_{test_id}_answers'] = {}
     session[f'test_{test_id}_marked'] = []
     session[f'test_{test_id}_skipped'] = []
     return redirect(url_for('test_bp.single_question', test_id=test_id, q_num=1))
-
 
 @test_bp.route('/tests/<int:test_id>/question/<int:q_num>', methods=['GET', 'POST'])
 def single_question(test_id, q_num):

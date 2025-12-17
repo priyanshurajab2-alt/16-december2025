@@ -25,17 +25,22 @@ def list_tests():
         cur = conn.execute('''
             SELECT ti.id, ti.test_name, ti.description, ti.duration_minutes,
                    ti.start_time, ti.end_time,
-                   MAX(ur.test_submitted) AS test_submitted
+                   EXISTS (
+                       SELECT 1 FROM user_responses ur
+                       WHERE ur.test_id = ti.id
+                         AND ur.user_id = ?
+                         AND ur.question_id IS NULL
+                         AND ur.test_submitted = 1
+                   ) AS test_submitted
             FROM test_info ti
-            LEFT JOIN user_responses ur
-                ON ti.id = ur.test_id AND ur.user_id = ?
-            GROUP BY ti.id
             ORDER BY ti.created_at DESC
         ''', (user_id,))
         tests = cur.fetchall()
     finally:
         conn.close()
+
     return render_template('test/tests.html', tests=tests)
+
 
 @test_bp.route('/tests/<int:test_id>/questions')
 def view_test_questions(test_id):
@@ -373,7 +378,11 @@ def submit_test(test_id):
                 INSERT INTO user_responses (test_id, user_id, question_id, user_answer, is_correct, test_started)
                 VALUES (?, ?, ?, ?, ?, 1)
             ''', (test_id, user_id, q['id'], user_answer, is_correct))
-
+                    # Insert a durable completion marker (one row per user+test)
+            conn.execute('''
+            INSERT INTO user_responses (test_id, user_id, question_id, user_answer, is_correct, test_started, test_submitted)
+            VALUES (?, ?, NULL, NULL, 0, 1, 1)
+        ''', (test_id, user_id))
         # Mark test as submitted
         conn.execute('''
             UPDATE user_responses

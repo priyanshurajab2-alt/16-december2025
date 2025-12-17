@@ -19,16 +19,26 @@ def get_test_db_connection():
 
 @test_bp.route('/tests')
 def list_tests():
+    user_id = session.get('user_id', 1)  # adjust default as you wish
     conn = get_test_db_connection()
     try:
         cur = conn.execute('''
-            SELECT id, test_name, description, duration_minutes, start_time, end_time
-            FROM test_info
-            ORDER BY created_at DESC
-        ''')
+            SELECT ti.id, ti.test_name, ti.description, ti.duration_minutes,
+                   ti.start_time, ti.end_time,
+                   EXISTS (
+                       SELECT 1 FROM user_responses ur
+                       WHERE ur.test_id = ti.id
+                         AND ur.user_id = ?
+                         AND ur.question_id IS NULL
+                         AND ur.is_correct = 1
+                   ) AS completed
+            FROM test_info ti
+            ORDER BY ti.created_at DESC
+        ''', (user_id,))
         tests = cur.fetchall()
     finally:
         conn.close()
+
     return render_template('test/tests.html', tests=tests)
 
 
@@ -370,6 +380,11 @@ def submit_test(test_id):
                 VALUES (?, ?, ?, ?, ?)
             ''', (test_id, user_id, q['id'], user_answer, is_correct))
         
+        conn.execute('''
+            INSERT INTO user_responses (test_id, user_id, question_id, user_answer, is_correct)
+            VALUES (?, ?, NULL, NULL, 1)
+        ''', (test_id, user_id))
+
         conn.commit()
         print("DEBUG: Responses saved")
         

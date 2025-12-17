@@ -25,11 +25,10 @@ def list_tests():
         cur = conn.execute('''
             SELECT ti.id, ti.test_name, ti.description, ti.duration_minutes,
                    ti.start_time, ti.end_time,
-                   MAX(ur.test_started) as test_started,
-                   MAX(ur.test_submitted) as test_submitted
+                   MAX(ur.test_submitted) AS test_submitted
             FROM test_info ti
-            LEFT JOIN user_responses ur ON ti.id = ur.test_id 
-                AND ur.user_id = ?
+            LEFT JOIN user_responses ur
+                ON ti.id = ur.test_id AND ur.user_id = ?
             GROUP BY ti.id
             ORDER BY ti.created_at DESC
         ''', (user_id,))
@@ -37,36 +36,6 @@ def list_tests():
     finally:
         conn.close()
     return render_template('test/tests.html', tests=tests)
-@test_bp.route('/tests/<int:test_id>/resume')
-def resume_test(test_id):
-    user_id = session.get('user_id', 1)
-    conn = get_test_db_connection()
-    try:
-        # Check if test was started
-        started = conn.execute('''
-            SELECT test_started FROM user_responses 
-            WHERE test_id = ? AND user_id = ? LIMIT 1
-        ''', (test_id, user_id)).fetchone()
-        
-        if not started or started['test_started'] == 0:
-            flash("No saved progress found")
-            return redirect(url_for('test_bp.start_test', test_id=test_id))
-        
-        # Load saved session data from DB
-        answers = conn.execute('SELECT question_id, user_answer FROM user_responses WHERE test_id = ? AND user_id = ? AND question_id IS NOT NULL', (test_id, user_id)).fetchall()
-        marked = conn.execute('SELECT question_id FROM user_responses WHERE test_id = ? AND user_id = ? AND marked = 1', (test_id, user_id)).fetchall()
-        skipped = conn.execute('SELECT question_id FROM user_responses WHERE test_id = ? AND user_id = ? AND skipped = 1', (test_id, user_id)).fetchall()
-        
-        # Restore to session
-        session[f'test_{test_id}_answers'] = {str(row['question_id']): row['user_answer'] for row in answers}
-        session[f'test_{test_id}_marked'] = [str(row['question_id']) for row in marked]
-        session[f'test_{test_id}_skipped'] = [str(row['question_id']) for row in skipped]
-        
-    finally:
-        conn.close()
-    
-    return redirect(url_for('test_bp.single_question', test_id=test_id, q_num=1))
-
 
 @test_bp.route('/tests/<int:test_id>/questions')
 def view_test_questions(test_id):
@@ -106,15 +75,16 @@ def start_test(test_id):
     user_id = session.get('user_id', 1)
     conn = get_test_db_connection()
     try:
-        # Mark test as started
         conn.execute('''
-            UPDATE user_responses SET test_started = 1 
-            WHERE test_id = ? AND user_id = ?
+            INSERT INTO user_responses (test_id, user_id, question_id, test_started)
+            VALUES (?, ?, NULL, 1)
+            ON CONFLICT(test_id, user_id, question_id)
+            DO UPDATE SET test_started = 1
         ''', (test_id, user_id))
         conn.commit()
     finally:
         conn.close()
-    
+
     session[f'test_{test_id}_answers'] = {}
     session[f'test_{test_id}_marked'] = []
     session[f'test_{test_id}_skipped'] = []
@@ -407,18 +377,29 @@ def submit_test(test_id):
         answers = session.get(answer_key, {})
         print(f"DEBUG: Session answers: {answers}")
         
-        for q in questions:
+                for q in questions:
             qid = str(q['id'])
             user_answer = answers.get(qid)
             is_correct = 1 if user_answer and user_answer.upper() == q['correct_answer'].upper() else 0
-            print(f"DEBUG Q{q['id']}: user='{user_answer}', correct='{q['correct_answer']}', score={is_correct}")
-            
+
+            # Minimal change: upsert instead of blind INSERT
             conn.execute('''
-                INSERT INTO user_responses (test_id, user_id, question_id, user_answer, is_correct)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO user_responses (test_id, user_id, question_id, user_answer, is_correct, test_started)
+                VALUES (?, ?, ?, ?, ?, 1)
+                ON CONFLICT(test_id, user_id, question_id)
+                DO UPDATE SET user_answer = excluded.user_answer,
+                              is_correct = excluded.is_correct
             ''', (test_id, user_id, q['id'], user_answer, is_correct))
-        
+
+        # NEW: mark the whole test as submitted for this user
+        conn.execute('''
+            UPDATE user_responses
+            SET test_submitted = 1
+            WHERE test_id = ? AND user_id = ?
+        ''', (test_id, user_id))
+
         conn.commit()
+
         print("DEBUG: Responses saved")
         
         total = len(questions)

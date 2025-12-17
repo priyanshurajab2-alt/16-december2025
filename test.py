@@ -363,21 +363,18 @@ def submit_test(test_id):
         answers = session.get(answer_key, {})
         print(f"DEBUG: Session answers: {answers}")
         
-        for q in questions:
+                for q in questions:
             qid = str(q['id'])
             user_answer = answers.get(qid)
             is_correct = 1 if user_answer and user_answer.upper() == q['correct_answer'].upper() else 0
-
-            # Minimal change: upsert instead of blind INSERT
+            print(f"DEBUG Q{q['id']}: user='{user_answer}', correct='{q['correct_answer']}', score={is_correct}")
+            
             conn.execute('''
                 INSERT INTO user_responses (test_id, user_id, question_id, user_answer, is_correct, test_started)
                 VALUES (?, ?, ?, ?, ?, 1)
-                ON CONFLICT(test_id, user_id, question_id)
-                DO UPDATE SET user_answer = excluded.user_answer,
-                              is_correct = excluded.is_correct
             ''', (test_id, user_id, q['id'], user_answer, is_correct))
 
-        # NEW: mark the whole test as submitted for this user
+        # Mark test as submitted
         conn.execute('''
             UPDATE user_responses
             SET test_submitted = 1
@@ -385,6 +382,7 @@ def submit_test(test_id):
         ''', (test_id, user_id))
 
         conn.commit()
+
 
         print("DEBUG: Responses saved")
         

@@ -363,7 +363,7 @@ def submit_test(test_id):
         answers = session.get(answer_key, {})
         print(f"DEBUG: Session answers: {answers}")
         
-                for q in questions:
+        for q in questions:
             qid = str(q['id'])
             user_answer = answers.get(qid)
             is_correct = 1 if user_answer and user_answer.upper() == q['correct_answer'].upper() else 0

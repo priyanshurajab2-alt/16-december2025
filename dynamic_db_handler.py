@@ -721,7 +721,54 @@ def register_dynamic_db_routes(app, ensure_user_session_func):
                              categories=dynamic_db_handler.db_categories,
                              discovered_databases=dynamic_db_handler.discovered_databases,
                              db_stats=db_stats)
-    
+   
+
+    @app.route('/admin/manage_db/<db_file>')
+    def manage_specific_database(db_file):
+    """Manage a specific database with better error handling"""
+    try:
+        # Ensure we only work with a plain filename
+        filename = os.path.basename(db_file)
+        full_path = os.path.join(BASE_DATA_DIR, filename)
+
+        conn = dynamic_db_handler.get_connection(full_path)
+
+        # Get all tables
+        tables = conn.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+        """).fetchall()
+
+        table_stats = []
+        for table in tables:
+            table_name = table['name']
+            try:
+                safe_name = dynamic_db_handler.safe_table_name(table_name)
+                count_query = f"SELECT COUNT(*) as count FROM {safe_name}"
+                count = conn.execute(count_query).fetchone()['count']
+                columns = conn.execute(f"PRAGMA table_info({safe_name})").fetchall()
+                table_stats.append({
+                    'name': table_name,
+                    'records': count,
+                    'columns': len(columns)
+                })
+            except Exception as e:
+                table_stats.append({
+                    'name': table_name,
+                    'records': 0,
+                    'columns': 0,
+                    'error': str(e)
+                })
+
+        conn.close()
+        return render_template('manage_database.html',
+                               db_file=full_path,
+                               tables=table_stats)
+
+    except Exception as e:
+        flash(f'Error accessing database: {str(e)}', 'error')
+        return redirect(url_for('dynamic_db_home'))
     @app.route('/admin/add_database', methods=['GET', 'POST'])
     def add_new_database():
         """Add a new database"""

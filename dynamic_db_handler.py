@@ -171,7 +171,7 @@ class DynamicDatabaseHandler:
                 if os.path.exists(db_file):
                     db_info = {
                         'file': db_file,
-                        'name': os.path.splitext(db_file)[0],
+                        'name': os.path.splitext(os.path.basename(db_file))[0],
                         'size': os.path.getsize(db_file),
                         'modified': datetime.fromtimestamp(os.path.getmtime(db_file))
                     }

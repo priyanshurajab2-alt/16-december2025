@@ -504,7 +504,27 @@
             </div>
         </div>
     </section>
+    <div class="mb-3">
+  <form method="POST" action="{{ url_for('set_goal') }}" class="d-flex align-items-end gap-2">
+    <div>
+      <label for="goal" class="form-label mb-1">Goal</label>
+      <select name="goal" id="goal" class="form-select form-select-sm">
+        {% for key, g in goals.items() %}
+          <option value="{{ key }}" {% if session.current_goal == key %}selected{% endif %}>
+            {{ g.label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary mb-1">Set</button>
+  </form>
 
+  {% if session.current_goal %}
+    <small class="text-muted">
+      Current goal: {{ goals[session.current_goal].label }}
+    </small>
+  {% endif %}
+</div>
 
 
 

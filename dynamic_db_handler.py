@@ -1068,7 +1068,12 @@ def register_dynamic_db_routes(app, ensure_user_session_func):
     def add_database_record(db_file, table_name):
         """FIXED: Add a new record to a table"""
         try:
-            conn = dynamic_db_handler.get_connection(db_file)
+
+            filename = os.path.basename(db_file)
+            fullpath = os.path.join(BASE_DATA_DIR, filename)
+
+
+            conn = dynamic_db_handler.get_connection(fullpath)
             safe_name = dynamic_db_handler.safe_table_name(table_name)
             
             if request.method == 'POST':

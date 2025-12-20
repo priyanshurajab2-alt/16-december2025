@@ -59,7 +59,7 @@ def set_goal():
         flash(f"Goal set to {GOALS[goal_key]['label']}", 'success')
     else:
         flash("Invalid goal selected", 'error')
-    return redirect(url_for('index'))
+    return redirect(url_for('home'))
 def get_user_db_connection():
     """ONLY connection function for ALL user operations"""
     conn = sqlite3.connect(USER_DB_FILE)

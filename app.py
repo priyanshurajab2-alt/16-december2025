@@ -22,7 +22,7 @@ def set_goal():
         flash(f"Goal set to {GOALS[goal_key]['label']}", 'success')
     else:
         flash("Invalid goal selected", 'error')
-    return redirect(url_for('home'))
+    return redirect(url_for('index'))
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'  # Required for sessions and flashes
 
@@ -713,7 +713,7 @@ def save_note():
 # --------------------
 @app.route('/')
 def landing():
-    return render_template('index.html')
+    return render_template('index.html'goals=GOALS)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -1150,7 +1150,7 @@ def migrate_users_manual():
 @app.route('/home')
 def home():
 
-    return render_template('home.html', ..., goals=GOALS)
+    return render_template('home.html')
     """UPDATED: Home page - Uses dynamic database discovery"""
     user_id = session.get('user_id')
     

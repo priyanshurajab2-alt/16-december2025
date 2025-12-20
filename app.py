@@ -713,7 +713,7 @@ def save_note():
 # --------------------
 @app.route('/')
 def landing():
-return render_template('index.html', goals=GOALS)
+    return render_template('index.html', goals=GOALS)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -1150,7 +1150,6 @@ def migrate_users_manual():
 @app.route('/home')
 def home():
 
-    return render_template('home.html')
     """UPDATED: Home page - Uses dynamic database discovery"""
     user_id = session.get('user_id')
     

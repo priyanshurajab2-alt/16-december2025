@@ -770,9 +770,8 @@ def register_dynamic_db_routes(app, ensure_user_session_func):
         for category, databases in filtered.items():
             db_stats[category] = []
             for dbinfo in databases:
-                # get_database_stats returns a dict with file/tables/etc.
-                stats = dynamic_db_handler.get_database_stats(dbinfo['file'])
-                db_stats[category].append(stats)    
+                db_stats[category].append(dbinfo)
+  
 
         # Reuse the same template you already use for the global manager
         return render_template(

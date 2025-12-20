@@ -7,6 +7,8 @@ from datetime import datetime
 import shutil
 import traceback
 from werkzeug.utils import secure_filename
+from fnmatch import fnmatch
+
 BASE_DATA_DIR = '/var/data'
 
 GOALS = {
@@ -386,13 +388,11 @@ class DynamicDatabaseHandler:
         }
     
     def add_new_database(self, category, db_name):
-        """Add a new database to a category"""
+        
         if category not in self.db_categories:
             return False, "Invalid category"
-        
 
-
-    # 1) Build base filename from category (same as before, but into base_name)
+        # 1) Build base filename from category
         if category == 'qbank':
             base_name = f"{db_name}_year.db"
         elif category == 'mcq':
@@ -406,57 +406,37 @@ class DynamicDatabaseHandler:
         else:
             base_name = f"{db_name}.db"
 
-        # 2) NEW: if we are inside a goal manager, prefix with "<goal_key>_"
+        # 2) If we are inside a goal manager, prefix with "<goal_key>_"
         goal_key = session.get('admin_goal')   # 'neet_ug', 'mbbs_prof', or None
         if goal_key and category not in ('admin', 'users'):
             base_name = f"{goal_key}_{base_name}"
 
-    # 3) Full path
-    db_file = os.path.join('/var/data', base_name)
+        # 3) Full path
+        db_file = os.path.join('/var/data', base_name)
 
-    # rest of your function (exists check, create, schema, etc.) stays the same
-
-
-
-        # Create database file name based on category
-        if category == 'qbank':
-            db_file = os.path.join('/var/data', f"{db_name}_year.db")
-        elif category == 'mcq':
-            db_file = os.path.join('/var/data', f"{db_name}_mcq.db")
- 
-        elif category == 'admin':
-            db_file = os.path.join('/var/data', "admin_users.db")
-        elif category == 'users':
-            db_file = "admin_users.db"
-        elif category == 'test':
-            db_file = os.path.join('/var/data', f"{db_name}_test.db")
-            # Fixed name for centralized users
-        else:
-            db_file = os.path.join('/var/data', f"{db_name}.db")
-        
         # Check if database already exists
         if os.path.exists(db_file):
             return False, f"Database {db_file} already exists"
-        
+
         try:
             # Create database with proper schema
             conn = sqlite3.connect(db_file)
             schema = self.db_categories[category]['schema']
-            
+
             for table_name, create_sql in schema.items():
                 conn.execute(create_sql)
-            
+
             conn.commit()
             conn.close()
-            
+
             # Refresh discovered databases
             self.discovered_databases = self.discover_databases()
-            
+
             return True, f"Database {db_file} created successfully"
-        
+
         except Exception as e:
             return False, f"Error creating database: {str(e)}"
-    
+
     def upload_database(self, uploaded_file, category):
         """Upload and validate a database file"""
         if not uploaded_file or uploaded_file.filename == '':
@@ -755,10 +735,8 @@ def find_subject_database(subject_name):
 def register_dynamic_db_routes(app, ensure_user_session_func):
     """Register dynamic database management routes with centralized user support"""
     
-    from fnmatch import fnmatch
 
-def register_dynamic_db_routes(app, admin_required=True):
-    ...
+    
     # your existing /admin/dynamic_db_manager route is already here
     # we add two new routes below:
 

@@ -777,9 +777,9 @@ def register_dynamic_db_routes(app, ensure_user_session_func):
         # Reuse the same template you already use for the global manager
         return render_template(
             'dynamic_db_manager.html',
-            categories=dynamic_db_handler.db_categories,
-            discovered_databases=filtered
-            # include any other context your existing manager uses (stats, etc.)
+        categories=dynamic_db_handler.db_categories,
+        discovered_databases=filtered,
+        db_stats=db_stats
         )
 
       

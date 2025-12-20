@@ -14,15 +14,7 @@ from flask import Flask
 from test import test_bp   # Import the test blueprint (replace with your module name)
 from dynamic_db_handler import GOALS  # at top of app.py [file:488]
 
-@app.route('/set_goal', methods=['POST'])
-def set_goal():
-    goal_key = request.form.get('goal')
-    if goal_key in GOALS:
-        session['current_goal'] = goal_key
-        flash(f"Goal set to {GOALS[goal_key]['label']}", 'success')
-    else:
-        flash("Invalid goal selected", 'error')
-    return redirect(url_for('index'))
+
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'  # Required for sessions and flashes
 
@@ -59,8 +51,15 @@ for rule in app.url_map.iter_rules():
 # --------------------
 # CENTRALIZED DATABASE CONNECTION FUNCTIONS
 # --------------------
-
-
+@app.route('/set_goal', methods=['POST'])
+def set_goal():
+    goal_key = request.form.get('goal')
+    if goal_key in GOALS:
+        session['current_goal'] = goal_key
+        flash(f"Goal set to {GOALS[goal_key]['label']}", 'success')
+    else:
+        flash("Invalid goal selected", 'error')
+    return redirect(url_for('index'))
 def get_user_db_connection():
     """ONLY connection function for ALL user operations"""
     conn = sqlite3.connect(USER_DB_FILE)

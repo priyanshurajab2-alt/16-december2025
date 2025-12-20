@@ -713,7 +713,7 @@ def save_note():
 # --------------------
 @app.route('/')
 def landing():
-    return render_template('index.html'goals=GOALS)
+return render_template('index.html', goals=GOALS)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():

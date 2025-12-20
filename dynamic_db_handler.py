@@ -9,7 +9,17 @@ import traceback
 from werkzeug.utils import secure_filename
 BASE_DATA_DIR = '/var/data'
 
-
+GOALS = {
+    'neet_ug': {
+        'label': 'NEET UG',
+        'description': 'Pre-medical entrance preparation',
+    },
+    'mbbs_prof': {
+        'label': 'MBBS Prof Exams',
+        'description': 'Professional university exams',
+    },
+    # add more goals if you need
+}
 
 class DynamicDatabaseHandler:
     def __init__(self):
@@ -380,6 +390,34 @@ class DynamicDatabaseHandler:
         if category not in self.db_categories:
             return False, "Invalid category"
         
+
+
+    # 1) Build base filename from category (same as before, but into base_name)
+        if category == 'qbank':
+            base_name = f"{db_name}_year.db"
+        elif category == 'mcq':
+            base_name = f"{db_name}_mcq.db"
+        elif category == 'admin':
+            base_name = "admin_users.db"
+        elif category == 'users':
+            base_name = "admin_users.db"
+        elif category == 'test':
+            base_name = f"{db_name}_test.db"
+        else:
+            base_name = f"{db_name}.db"
+
+        # 2) NEW: if we are inside a goal manager, prefix with "<goal_key>_"
+        goal_key = session.get('admin_goal')   # 'neet_ug', 'mbbs_prof', or None
+        if goal_key and category not in ('admin', 'users'):
+            base_name = f"{goal_key}_{base_name}"
+
+    # 3) Full path
+    db_file = os.path.join('/var/data', base_name)
+
+    # rest of your function (exists check, create, schema, etc.) stays the same
+
+
+
         # Create database file name based on category
         if category == 'qbank':
             db_file = os.path.join('/var/data', f"{db_name}_year.db")
@@ -436,12 +474,27 @@ class DynamicDatabaseHandler:
             return False, "User database must be named 'admin_users.db'"
         
         # Check if file already exists
-        if os.path.exists(filename):
+        filename = secure_filename(uploaded_file.filename)
+
+        # Ensure .db extension
+        if not filename.lower().endswith('.db'):
+            filename = f"{filename}.db"
+
+        # NEW: prefix with admin_goal if present (except for centralized users)
+        goal_key = session.get('admin_goal')
+        if goal_key and category not in ('admin', 'users'):
+            filename = f"{goal_key}_{filename}"
+
+        full_path = os.path.join('/var/data', filename)
+
+        # Check if file already exists
+        if os.path.exists(full_path):
             return False, f"Database {filename} already exists"
-        
+
         try:
-            # Save the uploaded file
-            uploaded_file.save(os.path.join('/var/data', filename))
+            uploaded_file.save(full_path)
+            ...
+
 
             
             # Validate it's a proper SQLite database
@@ -702,6 +755,52 @@ def find_subject_database(subject_name):
 def register_dynamic_db_routes(app, ensure_user_session_func):
     """Register dynamic database management routes with centralized user support"""
     
+    from fnmatch import fnmatch
+
+def register_dynamic_db_routes(app, admin_required=True):
+    ...
+    # your existing /admin/dynamic_db_manager route is already here
+    # we add two new routes below:
+
+    @app.route('/admin/goals')
+    def goals_home():
+        # Simple page listing goals with links to goal-specific manager
+        return render_template('goals_home.html', goals=GOALS)
+
+    @app.route('/admin/goal_db/<goal_key>')
+    def goal_dynamic_db_manager(goal_key):
+        if goal_key not in GOALS:
+            flash('Invalid goal', 'error')
+            return redirect(url_for('goals_home'))
+
+        # Remember which goal admin is working on
+        session['admin_goal'] = goal_key
+
+        # Discover all databases
+        dynamic_db_handler.discovered_databases = dynamic_db_handler.discover_databases()
+
+        # Filter by prefix "<goal_key>_"
+        prefix = f"{goal_key}_"
+        filtered = {}
+        for category, dbs in dynamic_db_handler.discovered_databases.items():
+            filtered[category] = [
+                db for db in dbs
+                if os.path.basename(db['file']).startswith(prefix)
+            ]
+
+        # Reuse the same template you already use for the global manager
+        return render_template(
+            'dynamic_db_manager.html',
+            categories=dynamic_db_handler.db_categories,
+            discovered_databases=filtered
+            # include any other context your existing manager uses (stats, etc.)
+        )
+
+
+
+
+
+
     @app.route('/admin/dynamic_db_manager')
     def dynamic_db_home():
         """Main dynamic database manager interface"""

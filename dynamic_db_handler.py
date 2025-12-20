@@ -702,6 +702,47 @@ def get_all_qbank_subjects():
     return all_subjects
 
 
+def get_goal_qbank_subjects(goal_key=None):
+    """Get subjects only from qbank DBs for a specific goal (by filename prefix)."""
+    all_subjects = {}
+
+    # Refresh discovery
+    dynamic_db_handler.discovered_databases = dynamic_db_handler.discover_databases()
+    qbank_databases = dynamic_db_handler.discovered_databases.get('qbank', [])
+
+    prefix = f"{goal_key}_" if goal_key else None
+
+    for db_info in qbank_databases:
+        db_file = db_info['file']
+
+        # If a goal is set, skip DBs from other goals
+        if prefix and not os.path.basename(db_file).startswith(prefix):
+            continue
+
+        try:
+            conn = dynamic_db_handler.get_connection(db_file)
+            subjects = conn.execute('''
+                SELECT DISTINCT subject, COUNT(*) as question_count
+                FROM qbank
+                GROUP BY subject
+                ORDER BY subject
+            ''').fetchall()
+
+            for row in subjects:
+                subject = row['subject']
+                if subject not in all_subjects:
+                    all_subjects[subject] = []
+                all_subjects[subject].append({
+                    'database': db_file,
+                    'question_count': row['question_count']
+                })
+            conn.close()
+        except Exception as e:
+            print(f"Error reading subjects from {db_file}: {e}")
+
+    return all_subjects
+
+
 def find_subject_database(subject_name):
     """Find which database contains a specific subject"""
     # Refresh discovery

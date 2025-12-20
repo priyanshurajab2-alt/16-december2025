@@ -12,7 +12,11 @@ import os
 from mcq import register_mcq_routes
 from flask import Flask
 from test import test_bp   # Import the test blueprint (replace with your module name)
-from dynamic_db_handler import GOALS  # at top of app.py [file:488]
+from dynamic_db_handler import GOALS
+from dynamic_db_handler import GOALS, get_goal_qbank_subjects
+
+
+  # at top of app.py [file:488]
 
 
 app = Flask(__name__)
@@ -1151,13 +1155,18 @@ def home():
 
     """UPDATED: Home page - Uses dynamic database discovery"""
     user_id = session.get('user_id')
-    
+
+    goal_key = session.get('current_goal')
+
+
     # Get subjects from all databases dynamically
     try:
-        all_subjects = get_all_qbank_subjects()
-        print(f"Found subjects in databases: {list(all_subjects.keys())}")  # Debug line
+        all_subjects = get_goal_qbank_subjects(goal_key)
+        print(f"Found subjects for goal {goal_key}: {list(all_subjects.keys())}")
     except Exception as e:
-        print(f"Error getting dynamic subjects, falling back to single database: {e}")
+        print(f"Error getting goal-specific subjects, falling back to single database: {e}")
+
+
         # Fallback to original logic if dynamic fails
         conn = get_dynamic_subject_connection('Anatomy')  # Use any subject for fallback
         rows = conn.execute('SELECT DISTINCT subject FROM qbank ORDER BY subject').fetchall()
@@ -1227,7 +1236,8 @@ def home():
                 'total_topics': 0
             })
 
-    return render_template('home.html', grouped_subjects=grouped_subjects)
+    return render_template('home.html', grouped_subjects=grouped_subjects, current_goal=goal_key)
+
 
 @app.route('/subject/<subject_name>')
 def show_subject(subject_name):
